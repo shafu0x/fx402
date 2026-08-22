@@ -2,7 +2,7 @@
 
 import { after } from "next/server";
 
-const DISCORD_AVATAR_URL = "https://fx402-shafu.vercel.app/favicon.png";
+const DISCORD_AVATAR_URL = "https://www.fx402.dev/favicon.png";
 
 export async function sendDiscordNotification(content: string): Promise<void> {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL?.trim();

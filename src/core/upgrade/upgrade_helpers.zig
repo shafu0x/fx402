@@ -19,7 +19,7 @@ fn setRecvTimeout(conn: *std.http.Client.Connection) void {
 }
 
 pub const fork_build = true;
-pub const setup_url = "https://fx402-shafu.vercel.app/setup.sh";
+pub const setup_url = "https://www.fx402.dev/setup.sh";
 pub const cdn_base = "https://releases.fx.sh";
 
 pub fn resolveCdnBase() []const u8 {

@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     title: "fx402 - fx, with a wallet",
     description:
       "A fork of fx with x402 payments built in. Your agent can pay for the internet.",
-    url: "https://fx402.vercel.app",
+    url: "https://www.fx402.dev",
     siteName: "fx402",
   },
 };

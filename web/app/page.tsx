@@ -57,7 +57,7 @@ export default function Home() {
       <div className="mt-10">
         <p>fx, with a wallet.</p>
         <p className="mt-4 break-all font-semibold">
-          $ curl -fsSL https://fx402-shafu.vercel.app/setup.sh | bash
+          $ curl -fsSL https://www.fx402.dev/setup.sh | bash
         </p>
       </div>
 
