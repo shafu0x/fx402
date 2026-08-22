@@ -45,7 +45,7 @@ zig build -Doptimize=ReleaseSafe
 
 ## Credit
 
-All of the speed is [fx](https://github.com/vercel-labs/fx), built by the team at Vercel. This fork only adds the wallet.
+All of the speed is [fx](https://github.com/vercel-labs/fx), built by the team at Vercel. This fork adds the wallet and the x402 tools.
 
 ## License
 
