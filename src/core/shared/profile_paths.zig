@@ -14,6 +14,7 @@ pub const usage_recovery_dir_name = "usage-recovery";
 pub const backups_dir_name = "backups";
 pub const mcp_credentials_dir_name = "mcp-credentials";
 pub const mcp_credentials_file_name = "credentials.json";
+pub const wallet_file_name = "wallet.json";
 
 const settings_file_name = "settings.json";
 const mcp_config_file_name = "mcp.json";
@@ -96,6 +97,10 @@ pub fn recordingsDir(alloc: Allocator, home: []const u8) ![]u8 {
     return std.fs.path.join(alloc, &.{ home, root_dir_name, recordings_dir_name });
 }
 
+pub fn walletPath(alloc: Allocator, home: []const u8) ![]u8 {
+    return std.fs.path.join(alloc, &.{ home, root_dir_name, wallet_file_name });
+}
+
 test "profile path helpers preserve current default locations" {
     const alloc = std.testing.allocator;
 
@@ -168,4 +173,8 @@ test "profile path helpers preserve current default locations" {
     const recordings = try recordingsDir(alloc, "/tmp/fake-home");
     defer alloc.free(recordings);
     try std.testing.expectEqualStrings("/tmp/fake-home/.fx/recordings", recordings);
+
+    const wallet = try walletPath(alloc, "/tmp/fake-home");
+    defer alloc.free(wallet);
+    try std.testing.expectEqualStrings("/tmp/fake-home/.fx/wallet.json", wallet);
 }

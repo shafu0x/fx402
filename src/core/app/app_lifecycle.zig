@@ -21,6 +21,7 @@ const shell_runtime = @import("../../ui/shell_runtime.zig");
 const ui_terminal = @import("../../ui/terminal/terminal.zig");
 const terminal_diff = @import("../../ui/render_engine/terminal_diff.zig");
 const transcript_runtime = @import("../../ui/transcript/runtime.zig");
+const x402_wallet = @import("../../tools/x402/wallet.zig");
 
 const Allocator = std.mem.Allocator;
 const Metrics = types.Metrics;
@@ -313,6 +314,9 @@ pub fn loadStartupStatus(
     var detailed = try config_runtime.loadMergedSettingsDetailed(alloc, workspace_root);
     defer detailed.deinit(alloc);
     const settings = &detailed.settings;
+    if (io_mod.getenv("HOME")) |home| {
+        _ = x402_wallet.ensureWallet(alloc, home) catch {};
+    }
 
     const configured_selection = try configuredProviderSelection(default_model, settings);
     const selected_model = try loadStartupStatusModel(alloc, configured_selection.model, null);
@@ -384,6 +388,9 @@ fn loadStartupStateFromOwnedWorkspace(
         try config_runtime.loadMergedSettingsDetailed(alloc, state.workspace_root);
     defer detailed.deinit(alloc);
     const settings = &detailed.settings;
+    if (profile_home orelse io_mod.getenv("HOME")) |home| {
+        _ = x402_wallet.ensureWallet(alloc, home) catch {};
+    }
 
     state.workspace_access = try workspace_access.WorkspaceAccess.init(
         alloc,

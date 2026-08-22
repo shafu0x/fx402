@@ -91,6 +91,8 @@ Run `/feedback` to open the feedback form at `fx.sh/feedback`. It does not creat
 
 Run `/trace` to create a private Markdown diagnostic with logs, session context, runtime state, permissions, and recent activity. On macOS, fx copies the `.md` file to the clipboard; on other platforms, it saves the file and prints its path. Review and redact the trace before sharing it.
 
+Paid x402 origins use four tools: `x402_discover` (origin index), `x402_check` (one route schema), `x402_fetch` (Base USDC pay and retrieve), and `x402_balance` (wallet address and USDC). The first `fx` launch writes `~/.fx/wallet.json` (mode 0600) and never overwrites it. `x402_fetch` asks before signing; `fx ask` and other noninteractive runs fail closed. Unpaid `web_fetch` on a 402 points at `x402_fetch`.
+
 Use `fx ask` for a single request:
 
 ```bash

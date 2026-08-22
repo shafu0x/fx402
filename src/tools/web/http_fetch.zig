@@ -37,10 +37,18 @@ pub const Deadline = struct {
     deadline_ms: i64,
 };
 
+pub const ExtraHeader = struct {
+    name: []const u8,
+    value: []const u8,
+};
+
 pub const FetchOptions = struct {
     max_body_bytes: usize = max_body_bytes,
     deadline: ?Deadline = null,
     cancel_flag: ?*std.atomic.Value(bool) = null,
+    method: []const u8 = "GET",
+    body: ?[]const u8 = null,
+    extra_headers: []const ExtraHeader = &.{},
 };
 
 pub const Resolver = struct {
@@ -79,12 +87,16 @@ pub const ConnectorResponse = struct {
     content_encoding: ?[]u8 = null,
     content_encoding_count: usize = 0,
     content_type: ?[]u8 = null,
+    payment_required: ?[]u8 = null,
+    payment_response: ?[]u8 = null,
 
     pub fn deinit(self: *ConnectorResponse, alloc: Allocator) void {
         alloc.free(self.body);
         if (self.location) |location| alloc.free(location);
         if (self.content_encoding) |encoding| alloc.free(encoding);
         if (self.content_type) |mime| alloc.free(mime);
+        if (self.payment_required) |header| alloc.free(header);
+        if (self.payment_response) |header| alloc.free(header);
         self.* = .{ .status = .ok, .body = &.{} };
     }
 };
@@ -94,11 +106,15 @@ pub const Success = struct {
     status: std.http.Status,
     body: []u8,
     content_type: ?[]u8 = null,
+    payment_required: ?[]u8 = null,
+    payment_response: ?[]u8 = null,
 
     fn deinit(self: *Success, alloc: Allocator) void {
         alloc.free(self.final_url);
         alloc.free(self.body);
         if (self.content_type) |mime| alloc.free(mime);
+        if (self.payment_required) |header| alloc.free(header);
+        if (self.payment_response) |header| alloc.free(header);
         self.* = .{ .final_url = &.{}, .status = .ok, .body = &.{} };
     }
 };
@@ -113,10 +129,14 @@ pub const Failure = struct {
     status: ?std.http.Status = null,
     body: []u8 = &.{},
     content_encoding: ?[]u8 = null,
+    payment_required: ?[]u8 = null,
+    payment_response: ?[]u8 = null,
 
     fn deinit(self: *Failure, alloc: Allocator) void {
         alloc.free(self.body);
         if (self.content_encoding) |encoding| alloc.free(encoding);
+        if (self.payment_required) |header| alloc.free(header);
+        if (self.payment_response) |header| alloc.free(header);
         self.* = .{ .kind = .non_success_status };
     }
 };
@@ -208,6 +228,8 @@ pub fn fetch(alloc: Allocator, initial: url_policy.ValidatedUrl, options: FetchO
                 .status = response.status,
                 .body = decoded_body,
                 .content_type = content_type,
+                .payment_required = try dupeOptional(alloc, response.payment_required),
+                .payment_response = try dupeOptional(alloc, response.payment_response),
             } };
         }
 
@@ -216,6 +238,8 @@ pub fn fetch(alloc: Allocator, initial: url_policy.ValidatedUrl, options: FetchO
                 .kind = .non_success_status,
                 .status = response.status,
                 .body = try alloc.dupe(u8, response.body),
+                .payment_required = try dupeOptional(alloc, response.payment_required),
+                .payment_response = try dupeOptional(alloc, response.payment_response),
             } };
         }
 
@@ -224,6 +248,8 @@ pub fn fetch(alloc: Allocator, initial: url_policy.ValidatedUrl, options: FetchO
             .status = response.status,
             .body = try alloc.dupe(u8, response.body),
             .content_type = if (response.content_type) |mime| try alloc.dupe(u8, mime) else null,
+            .payment_required = try dupeOptional(alloc, response.payment_required),
+            .payment_response = try dupeOptional(alloc, response.payment_response),
         } };
     }
 
@@ -287,7 +313,14 @@ fn normalizedOptions(options: FetchOptions) FetchOptions {
         .max_body_bytes = if (options.max_body_bytes == 0) max_body_bytes else options.max_body_bytes,
         .deadline = options.deadline,
         .cancel_flag = options.cancel_flag,
+        .method = options.method,
+        .body = options.body,
+        .extra_headers = options.extra_headers,
     };
+}
+
+fn dupeOptional(alloc: Allocator, value: ?[]const u8) !?[]u8 {
+    return if (value) |text| try alloc.dupe(u8, text) else null;
 }
 
 fn resolveAddresses(alloc: Allocator, target: url_policy.ValidatedUrl, options: FetchOptions, resolver: Resolver) ![]IpAddress {
@@ -568,16 +601,65 @@ fn fetchTls(alloc: Allocator, fd: posix.fd_t, target: PinnedTarget, options: Fet
 
 fn writeRequest(writer: *std.Io.Writer, target: PinnedTarget, options: FetchOptions) !void {
     try checkControl(options);
-    try writer.print(
-        "GET {s} HTTP/1.1\r\n" ++
-            "Host: {s}\r\n" ++
-            "User-Agent: fx (web_fetch; +https://github.com/vercel-labs/fx)\r\n" ++
-            "Accept: text/markdown, text/html, */*\r\n" ++
-            "Accept-Encoding: gzip, deflate, zstd\r\n" ++
-            "Connection: close\r\n" ++
-            "\r\n",
-        .{ target.url.path_query, target.host_header },
-    );
+    if (!isSafeHttpMethod(options.method)) return error.UnsupportedHttpMethod;
+
+    try writer.print("{s} {s} HTTP/1.1\r\n", .{ options.method, target.url.path_query });
+    try writer.print("Host: {s}\r\n", .{target.host_header});
+    try writer.writeAll("User-Agent: fx (web_fetch; +https://github.com/vercel-labs/fx)\r\n");
+    if (!hasExtraHeader(options.extra_headers, "Accept")) {
+        try writer.writeAll("Accept: text/markdown, text/html, */*\r\n");
+    }
+    if (!hasExtraHeader(options.extra_headers, "Accept-Encoding")) {
+        try writer.writeAll("Accept-Encoding: gzip, deflate, zstd\r\n");
+    }
+    try writer.writeAll("Connection: close\r\n");
+    for (options.extra_headers) |header| {
+        if (!isSafeHeaderName(header.name) or !isSafeHeaderValue(header.value)) return error.InvalidHttpHeader;
+        if (std.ascii.eqlIgnoreCase(header.name, "Host") or
+            std.ascii.eqlIgnoreCase(header.name, "Content-Length") or
+            std.ascii.eqlIgnoreCase(header.name, "Connection"))
+        {
+            continue;
+        }
+        try writer.print("{s}: {s}\r\n", .{ header.name, header.value });
+    }
+    if (options.body) |body| {
+        try writer.print("Content-Length: {d}\r\n", .{body.len});
+    }
+    try writer.writeAll("\r\n");
+    if (options.body) |body| {
+        try writer.writeAll(body);
+    }
+}
+
+fn isSafeHttpMethod(method: []const u8) bool {
+    if (method.len == 0 or method.len > 16) return false;
+    for (method) |byte| {
+        if (!std.ascii.isUpper(byte)) return false;
+    }
+    return true;
+}
+
+fn hasExtraHeader(headers: []const ExtraHeader, name: []const u8) bool {
+    for (headers) |header| {
+        if (std.ascii.eqlIgnoreCase(header.name, name)) return true;
+    }
+    return false;
+}
+
+fn isSafeHeaderName(name: []const u8) bool {
+    if (name.len == 0) return false;
+    for (name) |byte| {
+        if (byte <= 0x20 or byte >= 0x7f or byte == ':') return false;
+    }
+    return true;
+}
+
+fn isSafeHeaderValue(value: []const u8) bool {
+    for (value) |byte| {
+        if (byte == '\r' or byte == '\n') return false;
+    }
+    return true;
 }
 
 fn readResponse(
@@ -682,6 +764,8 @@ fn readResponse(
         .content_encoding = head.content_encoding,
         .content_encoding_count = head.content_encoding_count,
         .content_type = head.content_type,
+        .payment_required = head.payment_required,
+        .payment_response = head.payment_response,
     };
 }
 
@@ -713,11 +797,15 @@ const ParsedHead = struct {
     content_encoding: ?[]u8 = null,
     content_encoding_count: usize = 0,
     content_type: ?[]u8 = null,
+    payment_required: ?[]u8 = null,
+    payment_response: ?[]u8 = null,
 
     fn deinit(self: *ParsedHead, alloc: Allocator) void {
         if (self.location) |location| alloc.free(location);
         if (self.content_encoding) |encoding| alloc.free(encoding);
         if (self.content_type) |mime| alloc.free(mime);
+        if (self.payment_required) |header| alloc.free(header);
+        if (self.payment_response) |header| alloc.free(header);
         self.* = .{
             .version = .http_1_1,
             .status = .ok,
@@ -845,6 +933,12 @@ fn applyHeadField(
 ) !void {
     if (std.ascii.eqlIgnoreCase(field.name, "Location")) {
         try replaceOwned(alloc, &parsed.location, field.value);
+    } else if (std.ascii.eqlIgnoreCase(field.name, "PAYMENT-REQUIRED")) {
+        if (parsed.payment_required == null)
+            try replaceOwned(alloc, &parsed.payment_required, field.value);
+    } else if (std.ascii.eqlIgnoreCase(field.name, "PAYMENT-RESPONSE")) {
+        if (parsed.payment_response == null)
+            try replaceOwned(alloc, &parsed.payment_response, field.value);
     } else if (std.ascii.eqlIgnoreCase(field.name, "Content-Encoding")) {
         if (parsed.content_encoding == null)
             try replaceOwned(alloc, &parsed.content_encoding, field.value);
@@ -3880,4 +3974,45 @@ test "web_fetch closed peer write returns a cause without terminating process" {
         return;
     };
     return error.TestExpectedError;
+}
+
+test "parseHead captures payment headers case-insensitively" {
+    const alloc = std.testing.allocator;
+    const raw =
+        "HTTP/1.1 402 Payment Required\r\n" ++
+        "PAYMENT-REQUIRED: abc123\r\n" ++
+        "Payment-Response: def456\r\n" ++
+        "Content-Length: 0\r\n";
+    var parsed = try parseHead(alloc, raw);
+    defer parsed.deinit(alloc);
+    try std.testing.expectEqual(std.http.Status.payment_required, parsed.status);
+    try std.testing.expectEqualStrings("abc123", parsed.payment_required.?);
+    try std.testing.expectEqualStrings("def456", parsed.payment_response.?);
+}
+
+test "writeRequest emits method body and extra headers" {
+    var buffer: [512]u8 = undefined;
+    var writer: std.Io.Writer = .fixed(&buffer);
+    var url = try url_policy.normalize(std.testing.allocator, "https://example.com/pay");
+    defer url.deinit(std.testing.allocator);
+    const target: PinnedTarget = .{
+        .url = url,
+        .admitted_addresses = &.{},
+        .tls_server_name = "example.com",
+        .host_header = "example.com",
+    };
+    try writeRequest(&writer, target, .{
+        .method = "POST",
+        .body = "{\"q\":\"hi\"}",
+        .extra_headers = &.{
+            .{ .name = "Content-Type", .value = "application/json" },
+            .{ .name = "PAYMENT-SIGNATURE", .value = "sig" },
+        },
+    });
+    const request = writer.buffered();
+    try std.testing.expect(std.mem.startsWith(u8, request, "POST /pay HTTP/1.1\r\n"));
+    try std.testing.expect(std.mem.indexOf(u8, request, "Content-Type: application/json\r\n") != null);
+    try std.testing.expect(std.mem.indexOf(u8, request, "PAYMENT-SIGNATURE: sig\r\n") != null);
+    try std.testing.expect(std.mem.indexOf(u8, request, "Content-Length: 10\r\n") != null);
+    try std.testing.expect(std.mem.endsWith(u8, request, "\r\n\r\n{\"q\":\"hi\"}"));
 }

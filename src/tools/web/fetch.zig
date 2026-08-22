@@ -15,6 +15,7 @@ const content = @import("content.zig");
 const html_to_markdown = @import("html_to_markdown.zig");
 const http_fetch = @import("http_fetch.zig");
 const url_policy = @import("url_policy.zig");
+const x402_protocol = @import("../x402/protocol.zig");
 
 const Allocator = std.mem.Allocator;
 
@@ -290,6 +291,19 @@ fn nonSuccessFailure(alloc: Allocator, url: []const u8, failure: http_fetch.Fail
         .{ .name = "body_preview", .value = .{ .string = safe_preview } },
         .{ .name = "body_truncated", .value = .{ .boolean = failure.body.len > preview_len } },
     };
+    if (failure.status == .payment_required) {
+        const hint = if (failure.payment_required) |header|
+            try x402_protocol.paymentRequiredHint(alloc, header)
+        else
+            try alloc.dupe(u8, "web_fetch received HTTP 402. Retry with x402_fetch (do not retry web_fetch).");
+        defer alloc.free(hint);
+        return try tool_result_errors.toolExecutionFailureJson(alloc, .{
+            .tool_name = "web_fetch",
+            .message = hint,
+            .details = &details,
+            .suggestion = "Retry with x402_fetch (do not retry web_fetch).",
+        });
+    }
     return try tool_result_errors.toolExecutionFailureJson(alloc, .{
         .tool_name = "web_fetch",
         .message = "web_fetch received non-success HTTP status",
@@ -495,6 +509,7 @@ const MockTransport = struct {
     location: ?[]const u8 = null,
     content_encoding: ?[]const u8 = null,
     content_type: ?[]const u8 = null,
+    payment_required: ?[]const u8 = null,
     seen_url: ?[]u8 = null,
     seen_cancel_flag: ?*std.atomic.Value(bool) = null,
     calls: usize = 0,
@@ -534,12 +549,15 @@ const MockTransport = struct {
         errdefer if (content_encoding) |owned| alloc.free(owned);
         const content_type = if (self.content_type) |mime| try alloc.dupe(u8, mime) else null;
         errdefer if (content_type) |owned| alloc.free(owned);
+        const payment_required = if (self.payment_required) |header| try alloc.dupe(u8, header) else null;
+        errdefer if (payment_required) |owned| alloc.free(owned);
         return .{
             .status = self.status,
             .body = body,
             .location = location,
             .content_encoding = content_encoding,
             .content_type = content_type,
+            .payment_required = payment_required,
         };
     }
 };
@@ -1308,6 +1326,28 @@ test "web_fetch returns structured failures for non success encoding and cross h
         try std.testing.expect(tool_result_errors.isToolExecutionFailedOutput(body));
         try std.testing.expect(std.mem.find(u8, body, "non-success HTTP status") != null);
         try std.testing.expect(std.mem.find(u8, body, "body_preview") != null);
+    }
+
+    {
+        const payment_json =
+            \\{"x402Version":2,"resource":{"url":"https://example.com/pay","description":"d","mimeType":"application/json"},"accepts":[{"scheme":"exact","network":"eip155:8453","asset":"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913","amount":"10000","payTo":"0x1111111111111111111111111111111111111111","maxTimeoutSeconds":60,"extra":{"name":"USD Coin","version":"2"}}]}
+        ;
+        const encoder = std.base64.standard.Encoder;
+        const header = try alloc.alloc(u8, encoder.calcSize(payment_json.len));
+        defer alloc.free(header);
+        _ = encoder.encode(header, payment_json);
+        var transport = MockTransport{ .status = .payment_required, .body = "pay", .payment_required = header };
+        defer transport.deinit(alloc);
+        var result = try callUrl(alloc, "https://example.com/pay", &transport);
+        defer result.deinit(alloc);
+        const body = switch (result) {
+            .success => return error.TestExpectedEqual,
+            .failure => |body| body,
+        };
+        try std.testing.expect(tool_result_errors.isToolExecutionFailedOutput(body));
+        try std.testing.expect(std.mem.find(u8, body, "x402_fetch") != null);
+        try std.testing.expect(std.mem.find(u8, body, "do not retry web_fetch") != null);
+        try std.testing.expect(std.mem.find(u8, body, "eip155:8453") != null);
     }
 
     {
