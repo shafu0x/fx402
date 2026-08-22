@@ -57,7 +57,7 @@ export default function Home() {
       <div className="mt-10">
         <p>fx, with a wallet.</p>
         <p className="mt-4 break-all font-semibold">
-          $ git clone https://github.com/shafu0x/fx402 &amp;&amp; zig build
+          $ curl -fsSL https://fx402-shafu.vercel.app/setup.sh | bash
         </p>
       </div>
 
@@ -67,17 +67,18 @@ export default function Home() {
 
       <Section title="why">
         <p className="text-muted-foreground">
-          I love using fx. I just needed access to all the{" "}
+          I love using fx. It is so fast. I wanted to see how fast it would be
+          at calling{" "}
           <a
             className="text-foreground underline underline-offset-4"
             href="https://x402.org"
           >
             x402
           </a>{" "}
-          endpoints. Now it does.
+          APIs as native tool calls, not as an MCP.
         </p>
         <p className="text-muted-foreground">
-          fx is a 6mb coding agent that cold starts in 10µs. fx402 speaks{" "}
+          fx402 speaks{" "}
           <a
             className="text-foreground underline underline-offset-4"
             href="https://x402.org"

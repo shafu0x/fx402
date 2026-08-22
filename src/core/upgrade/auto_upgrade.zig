@@ -28,6 +28,7 @@ pub const RelaunchRequest = struct {
 };
 
 pub fn shouldEnableForCurrentExecutable() bool {
+    if (comptime helpers.fork_build) return false;
     var exe_buf: [std.fs.max_path_bytes]u8 = undefined;
     const n = std.process.executablePath(io_mod.getIo(), &exe_buf) catch return true;
     return !isDevelopmentBuildPath(exe_buf[0..n]);
@@ -276,6 +277,10 @@ test "development build paths disable auto upgrade" {
     try std.testing.expect(isDevelopmentBuildPath("/repo/zig-out/bin/fx"));
     try std.testing.expect(isDevelopmentBuildPath("C:\\repo\\zig-out\\bin\\fx.exe"));
     try std.testing.expect(!isDevelopmentBuildPath("/Users/me/.local/bin/fx"));
+}
+
+test "fork builds never auto-upgrade" {
+    try std.testing.expect(!shouldEnableForCurrentExecutable());
 }
 
 test "statusLabel downloading shows ellipsis" {

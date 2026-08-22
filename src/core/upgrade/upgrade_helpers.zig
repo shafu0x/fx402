@@ -18,6 +18,8 @@ fn setRecvTimeout(conn: *std.http.Client.Connection) void {
     std.posix.setsockopt(sock, std.posix.SOL.SOCKET, std.posix.SO.RCVTIMEO, std.mem.asBytes(&timeout)) catch {};
 }
 
+pub const fork_build = true;
+pub const setup_url = "https://fx402-shafu.vercel.app/setup.sh";
 pub const cdn_base = "https://releases.fx.sh";
 
 pub fn resolveCdnBase() []const u8 {

@@ -37,6 +37,7 @@ const usage_report = @import("../session/usage_report.zig");
 const skill_contract = @import("../skills/skill_contract.zig");
 const types = @import("../shared/types.zig");
 const update_target = @import("../upgrade/update_target.zig");
+const upgrade_helpers = @import("../upgrade/upgrade_helpers.zig");
 const test_builtin_gateway = if (builtin.is_test)
     @import("../../builtins/gateway.zig")
 else
@@ -1633,6 +1634,12 @@ fn runNonInteractiveWithDeps(
             return .handled_success;
         },
         .upgrade => |rest| {
+            if (comptime upgrade_helpers.fork_build) {
+                try writeStderr(deps, "fx402 upgrade is disabled. Reinstall with:\n  curl -fsSL ");
+                try writeStderr(deps, upgrade_helpers.setup_url);
+                try writeStderr(deps, " | bash\n");
+                return .handled_success;
+            }
             const upgrade_runtime = @import("../upgrade/upgrade_runtime.zig");
             const opts = parseUpgradeArgs(rest) catch |err| {
                 try writeUsageOrJsonError(alloc, cfg.command_catalog, deps, .upgrade, "upgrade", err, rest);
