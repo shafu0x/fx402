@@ -16,47 +16,48 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mt-14">
-      <h2 className="text-muted-foreground">{title}</h2>
-      <div className="mt-3 space-y-3">{children}</div>
+    <section className="mt-16">
+      <h2 className="text-foreground text-[15px] font-semibold tracking-tight">
+        {title}
+      </h2>
+      <div className="mt-4 space-y-3">{children}</div>
     </section>
   );
 }
 
 export default function Home() {
   return (
-    <main className="w-full max-w-2xl grow px-7 py-7">
-      <nav className="flex items-center gap-x-6">
+    <main className="mx-auto w-full max-w-2xl grow px-4 py-6 sm:px-7 sm:py-7">
+      <nav className="flex items-center justify-between">
         <span className="font-semibold">
           <span className="italic">𝒇</span>x402
         </span>
-        <a
-          className="text-muted-foreground hover:text-foreground transition-colors"
-          href="https://github.com/shafu0x/fx402"
-        >
-          source
-        </a>
-        <a
-          className="text-muted-foreground hover:text-foreground transition-colors"
-          href="https://fx.sh"
-        >
-          fx
-        </a>
-        <a
-          className="text-muted-foreground hover:text-foreground transition-colors"
-          href="https://x.com/shafu0x"
-        >
-          @shafu0x
-        </a>
+        <div className="flex items-center gap-x-4 sm:gap-x-6">
+          <a
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            href="https://github.com/shafu0x/fx402"
+          >
+            source
+          </a>
+          <a
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            href="https://fx.sh"
+          >
+            fx
+          </a>
+          <a
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            href="https://x.com/shafu0x"
+          >
+            @shafu0x
+          </a>
+        </div>
       </nav>
 
-      <div className="mt-20">
+      <div className="mt-10">
         <p>fx, with a wallet.</p>
-        <p className="mt-4 font-semibold">
+        <p className="mt-4 break-all font-semibold">
           $ git clone https://github.com/shafu0x/fx402 &amp;&amp; zig build
-        </p>
-        <p className="text-muted-foreground mt-4">
-          fork of fx · x402 · usdc on base · asks before it spends
         </p>
       </div>
 
@@ -93,7 +94,7 @@ export default function Home() {
           Four tools, compiled into the binary. There is no MCP server to spawn
           and no handshake before the agent can pay.
         </p>
-        <ul className="space-y-1">
+        <ul className="marker:text-muted-foreground list-disc space-y-1 pl-5">
           {tools.map(([name, description]) => (
             <li key={name}>
               {name}
@@ -104,7 +105,7 @@ export default function Home() {
       </Section>
 
       <Section title="your keys">
-        <ul className="text-muted-foreground space-y-1">
+        <ul className="text-muted-foreground marker:text-muted-foreground list-disc space-y-1 pl-5">
           <li>
             The wallet is generated once at{" "}
             <span className="text-foreground">~/.fx/wallet.json</span> and never
@@ -132,7 +133,7 @@ export default function Home() {
         </p>
       </Section>
 
-      <footer className="text-muted-foreground mt-20 flex items-center gap-x-1.5 border-t pt-6">
+      <footer className="text-muted-foreground mt-20 flex items-center justify-center gap-x-1.5 border-t pt-6">
         <span>Built with</span>
         <Heart className="size-3.5" aria-label="love" />
         <span>by</span>

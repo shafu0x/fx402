@@ -291,8 +291,8 @@ export const Terminal = ({
           </span>
         ) : null}
       </div>
-      <pre className="p-4">
-        <code className="grid gap-y-1 overflow-auto">{wrappedChildren}</code>
+      <pre className="overflow-x-auto p-3 text-[12px] leading-5 sm:p-4 sm:text-sm sm:leading-6">
+        <code className="grid gap-y-1">{wrappedChildren}</code>
       </pre>
     </div>
   )
