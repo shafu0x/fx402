@@ -1,4 +1,8 @@
-import { AnimatedSpan, Terminal, TypingAnimation } from "@/components/ui/terminal";
+import {
+  AnimatedSpan,
+  Terminal,
+  TypingAnimation,
+} from "@/components/ui/terminal";
 
 const dim = "text-muted-foreground";
 
@@ -35,22 +39,30 @@ export function TerminalDemo() {
           <span className={dim}>x402_fetch</span>{" "}
           twit.sh/users/by/username?username=shafu0x
         </span>
-        <span className="text-yellow-500/80">&nbsp;&nbsp;402 Payment Required</span>
+        <span className="text-yellow-500/80">
+          &nbsp;&nbsp;402 Payment Required
+        </span>
       </AnimatedSpan>
 
       <AnimatedSpan transition={pause(0.7)}>
         <span>&nbsp;</span>
         <span>&nbsp;&nbsp;Pay 0.005 USDC on eip155:8453 to 0x8f3a…c21b</span>
-        <span>&nbsp;&nbsp;for twit.sh/users/by/username? Wallet balance 4.982.</span>
+        <span>
+          &nbsp;&nbsp;for twit.sh/users/by/username? Wallet balance 4.982.
+        </span>
         <span>&nbsp;</span>
       </AnimatedSpan>
 
       <AnimatedSpan transition={pause(0.4)}>
         <span>
           <span className="text-green-500/90">&nbsp;&nbsp;❯ Pay</span>
-          <span className={dim}>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sign and retry with PAYMENT-SIGNATURE</span>
+          <span className={dim}>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sign and retry with PAYMENT-SIGNATURE
+          </span>
         </span>
-        <span className={dim}>&nbsp;&nbsp;&nbsp;&nbsp;Cancel&nbsp;&nbsp;Do not pay</span>
+        <span className={dim}>
+          &nbsp;&nbsp;&nbsp;&nbsp;Cancel&nbsp;&nbsp;Do not pay
+        </span>
         <span>&nbsp;</span>
       </AnimatedSpan>
 

@@ -67,16 +67,17 @@ export default function Home() {
 
       <Section title="why">
         <p className="text-muted-foreground">
-          fx is a 6mb coding agent that cold starts in 10µs. It is the fastest
-          thing I have ever put in a terminal, and I used it for everything.
+          I love using fx. I just needed access to all the{" "}
+          <a
+            className="text-foreground underline underline-offset-4"
+            href="https://x402.org"
+          >
+            x402
+          </a>{" "}
+          endpoints. Now it does.
         </p>
         <p className="text-muted-foreground">
-          Then it would hit a paywalled API and stop to ask me for a key. An
-          agent that can read the entire internet and buy none of it is only
-          half an agent. So I gave it a wallet.
-        </p>
-        <p className="text-muted-foreground">
-          fx402 speaks{" "}
+          fx is a 6mb coding agent that cold starts in 10µs. fx402 speaks{" "}
           <a
             className="text-foreground underline underline-offset-4"
             href="https://x402.org"
@@ -91,7 +92,7 @@ export default function Home() {
 
       <Section title="how it works">
         <p className="text-muted-foreground">
-          Four tools, compiled into the binary. There is no MCP server to spawn
+          Four tools. There is no MCP server to spawn
           and no handshake before the agent can pay.
         </p>
         <ul className="marker:text-muted-foreground list-disc space-y-1 pl-5">
